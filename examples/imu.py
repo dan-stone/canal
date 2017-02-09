@@ -1,20 +1,3 @@
-# canal
-A fairly crude attempt at an application-layer schema for python influxdb 
-clients
-
-It makes no assumptions about the client-side library, it just provides 
-utilities to serialize/deserialize payloads to/from an influxdb instance.  This
-makes it suitable for usage in both synchronous (ex. Django) or asynchronous 
-(ex. Tornado) applications
-
-Documentation is on my to-do list, apologies!
-
-# Example
-
-Authors Warning: I make no guarantees that this example is still functional, as 
-the API is still heavily in flux...
-
-```
 import datetime
 
 import canal
@@ -71,5 +54,3 @@ if __name__ == "__main__":
         user_id=user_id
     ))
     imu = next(IMU.Samples.from_json(imu_resp.raw))
-    
-```
