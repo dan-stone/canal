@@ -14,7 +14,7 @@ Documentation is on my to-do list, apologies!
 Authors Warning: I make no guarantees that this example is still functional, as 
 the API is still heavily in flux...
 
-```
+```python
 import datetime
 
 import canal
@@ -22,14 +22,13 @@ from influxdb import InfluxDBClient
 
 
 class IMU(canal.Measurement):
-    class Samples(canal.Series):
-        accelerometer_x = canal.IntegerField()
-        accelerometer_y = canal.IntegerField()
-        accelerometer_z = canal.IntegerField()
-        gyroscope_x = canal.IntegerField()
-        gyroscope_y = canal.IntegerField()
-        gyroscope_z = canal.IntegerField()
-        user_id = canal.Tag()
+    accelerometer_x = canal.IntegerField()
+    accelerometer_y = canal.IntegerField()
+    accelerometer_z = canal.IntegerField()
+    gyroscope_x = canal.IntegerField()
+    gyroscope_y = canal.IntegerField()
+    gyroscope_z = canal.IntegerField()
+    user_id = canal.Tag()
 
 
 if __name__ == "__main__":
@@ -45,7 +44,7 @@ if __name__ == "__main__":
 
     # Write some dummy IMU data, sampled once per second
     num_imu_samples = int(duration.total_seconds())
-    imu = IMU.Samples(
+    imu = IMU(
         time=[start_date + datetime.timedelta(seconds=d) for d in
               range(num_imu_samples)],
         acc_x=range(0, 1 * num_imu_samples, 1),
@@ -65,11 +64,10 @@ if __name__ == "__main__":
 
     # Read back the IMU data
     imu_resp = client.query(IMU.make_query_string(
-        IMU.Samples,
         time__gte=start_date,
         time__lte=start_date + duration,
         user_id=user_id
     ))
-    imu = next(IMU.Samples.from_json(imu_resp.raw))
+    assert imu == IMU.from_json(imu_resp.raw)
     
 ```

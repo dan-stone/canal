@@ -1,6 +1,6 @@
 import unittest
 
-from pyant.influx_schema import (
+from canal import (
     Tag,
     FloatField,
     IntegerField,
