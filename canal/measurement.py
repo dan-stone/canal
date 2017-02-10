@@ -127,7 +127,6 @@ class Measurement(metaclass=MeasurementMeta):
             series = [content]
 
         for s in series:
-            print(s)
             if s.get("name", None) == cls.__name__:
                 df = pd.DataFrame.from_records(
                     s["values"],

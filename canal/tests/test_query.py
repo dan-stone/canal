@@ -68,13 +68,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
         string_field = canal.StringField()
         test_tag = canal.Tag()
 
-    def test_query_string_for_point(self):
-        self.assertEqual(
-            self.Fixture.make_query_string(),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture"
-        )
-
-    def test_query_string_for_series(self):
+    def test_make_query_string(self):
         self.assertEqual(
             self.Fixture.make_query_string(),
             "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture"
