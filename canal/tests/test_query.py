@@ -130,6 +130,23 @@ class MakeQueryStringTestCase(unittest.TestCase):
             "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE int_field > 5"
         )
 
+    def test_limit(self):
+        self.assertEqual(
+            self.Fixture.make_query_string(
+                limit=5
+            ),
+            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 5"
+        )
+
+    def test_limit_offset(self):
+        self.assertEqual(
+            self.Fixture.make_query_string(
+                limit=10,
+                offset=10
+            ),
+            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 10 OFFSET 10"
+        )
+
     def test_unrecognized_condition(self):
         with self.assertRaises(ValueError):
             self.Fixture.make_query_string(
