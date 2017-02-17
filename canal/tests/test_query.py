@@ -142,9 +142,9 @@ class MakeQueryStringTestCase(unittest.TestCase):
         self.assertEqual(
             self.Fixture.make_query_string(
                 limit=10,
-                offset=10
+                offset=20
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 10 OFFSET 10"
+            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 10 OFFSET 20"
         )
 
     def test_unrecognized_condition(self):

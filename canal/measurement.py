@@ -305,6 +305,6 @@ class Measurement(metaclass=MeasurementMeta):
         if limit is not None:
             query_string += " LIMIT {}".format(int(limit))
             if offset is not None:
-                query_string += " OFFSET {}".format(int(limit))
+                query_string += " OFFSET {}".format(int(offset))
 
         return query_string
