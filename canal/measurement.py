@@ -119,7 +119,7 @@ class Measurement(metaclass=MeasurementMeta):
         """
         series = []
         if "results" in content:
-            for s in [result["series"] for result in content["results"]]:
+            for s in [result["series"] for result in content["results"] if "series" in result]:
                 series.extend(s)
         elif "series" in content:
             series = [s for s in content["series"]]
