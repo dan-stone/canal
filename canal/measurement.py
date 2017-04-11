@@ -288,10 +288,21 @@ class Measurement(metaclass=MeasurementMeta):
             raise ValueError("Unrecognized comparison operator {}".format(e))
 
     @classmethod
-    def make_query_string(cls, *, limit=None, offset=None, **conditions):
+    def make_query_string(cls, *, limit=None, offset=None, database=None,
+                          retention_policy=None, **conditions):
+
+        if database and retention_policy:
+            measurement_name = "{database}.{retention_policy}.{measurement}".format(
+                database=database,
+                retention_policy=retention_policy,
+                measurement=cls.__name__
+            )
+        else:
+            measurement_name = cls.__name__
+
         query_string = "SELECT {parameters} FROM {measurement_name}".format(
             parameters=",".join(name for name in cls.tags_and_fields),
-            measurement_name=cls.__name__
+            measurement_name=measurement_name
         )
 
         if conditions:
