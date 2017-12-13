@@ -10,23 +10,35 @@ from .datum import Tag, Field
 from .exceptions import MissingFieldError, MissingTagError
 
 
+def is_tag(args):
+    return isinstance(args[1], Tag)
+
+
+def is_field(args):
+    return isinstance(args[1], Field)
+
+
 class MeasurementMeta(type):
     def __new__(mcs, name, bases, attrs):
-        tags = {
-            key: value
-            for key, value in attrs.items() if isinstance(value, Tag)
-        }
-        fields = {
-            key: value
-            for key, value in attrs.items() if isinstance(value, Field)
-        }
+        tags = {}
+        for key, tag in filter(is_tag, attrs.items()):
+            if tag.db_name is None:
+                tag.db_name = key
+            tags[key] = tag
+
+        fields = {}
+        for key, field in filter(is_field, attrs.items()):
+            if field.db_name is None:
+                field.db_name = key
+            fields[key] = field
+
         for key in itertools.chain(tags.keys(), fields.keys()):
             del attrs[key]
 
         # Make the fields and tags aware of their attribute names (these will be
         # utilized as field and tag names within the database)
-        for attname, datum in {**tags, **fields}.items():
-            datum.name = attname
+        # for attname, datum in {**tags, **fields}.items():
+        #     datum.name = attname
 
         new_class = type.__new__(mcs, name, bases, attrs)
 
@@ -128,13 +140,24 @@ class Measurement(metaclass=MeasurementMeta):
 
         for s in series:
             if s.get("name", None) == cls.__name__:
+                column_names = ["time"]
+                for column_name in s["columns"]:
+                    if column_name == "time":
+                        continue
+                    for name, datum in cls.tags_and_fields.items():
+                        if datum.db_name == column_name:
+                            column_names.append(name)
+                            break
+                    else:
+                        raise ValueError("Unrecognized column name {}".format(column_name))
+
                 df = pd.DataFrame.from_records(
                     s["values"],
-                    columns=s["columns"]
+                    columns=column_names
                 )
 
                 return cls(**{
-                    column: df[column] for column in s["columns"]
+                    column: df[column] for column in column_names
                 })
 
         raise ValueError("Invalid JSON")
@@ -142,10 +165,10 @@ class Measurement(metaclass=MeasurementMeta):
     def __init__(self, time=None, **kwargs):
         items = [
             (name, kwargs.get(name, None))
-            for name in self.__class__.tags_by_attname
+            for name in self.tags
         ] + [
             (name, kwargs.get(name, None))
-            for name in self.__class__.fields_by_attname
+            for name in self.fields
         ] + [
             ('time', np.array(time, dtype='datetime64[ns]') if time is not None else None)
         ]
@@ -155,6 +178,14 @@ class Measurement(metaclass=MeasurementMeta):
         return len(self.data_frame)
 
     @property
+    def tags(self):
+        return self.__class__.tags_by_attname
+
+    @property
+    def fields(self):
+        return self.__class__.fields_by_attname
+
+    @property
     def data_frame(self):
         """
         Returns the underlying pandas dataframe wrapped by this instance
@@ -162,6 +193,10 @@ class Measurement(metaclass=MeasurementMeta):
         :return: A `pandas.DataFrame` instance
         """
         return self._data_frame
+
+    @property
+    def rec_array(self):
+        return self._data_frame.to_records(index=False)
 
     @property
     def time(self):
@@ -191,7 +226,7 @@ class Measurement(metaclass=MeasurementMeta):
         # Create the measurement+tags prototype
         tags = []
         tags_prototype = []
-        for attname, tag in self.__class__.tags_by_attname.items():
+        for attname, tag in self.tags.items():
             if tag.required:
                 if self.data_frame[attname].isnull().values.any():
                     raise MissingTagError(
@@ -200,13 +235,13 @@ class Measurement(metaclass=MeasurementMeta):
 
             tags.append(tag)
             tags_prototype.append("{tag_name}=%s".format(
-                tag_name=attname
+                tag_name=tag.db_name
             ))
 
         # Create the fields prototype
         fields = []
         fields_prototype = []
-        for attname, field in self.__class__.fields_by_attname.items():
+        for attname, field in self.fields.items():
             # First, do a check for missing required fields
             if field.required:
                 if self.data_frame[attname].isnull().values.any():

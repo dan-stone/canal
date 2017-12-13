@@ -2,8 +2,9 @@ import abc
 
 
 class Datum(metaclass=abc.ABCMeta):
-    def __init__(self, required=False):
+    def __init__(self, required=False, db_name=None):
         self.required = required
+        self.db_name = db_name
 
     @abc.abstractmethod
     def format(self, value):

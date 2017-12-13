@@ -8,6 +8,7 @@ from .util import NumpyTestCase
 class FromJSONTestCase(NumpyTestCase):
     class Measurement(canal.Measurement):
         int_field = canal.IntegerField()
+        alternate_db_name = canal.IntegerField(db_name="something_else")
         float_field = canal.FloatField()
         bool_field = canal.BooleanField()
         string_field = canal.StringField()
@@ -19,6 +20,7 @@ class FromJSONTestCase(NumpyTestCase):
             [
                 "2015-01-29T21:55:43.702900257Z",
                 1,
+                2,
                 1.2,
                 True,
                 "some content",
@@ -28,6 +30,7 @@ class FromJSONTestCase(NumpyTestCase):
             [
                 "2015-01-29T21:55:43.702900345Z",
                 2,
+                3,
                 2.3,
                 False,
                 "some other content",
@@ -43,6 +46,7 @@ class FromJSONTestCase(NumpyTestCase):
                     columns=[
                         "time",
                         "int_field",
+                        "something_else",
                         "float_field",
                         "bool_field",
                         "string_field",
@@ -69,6 +73,10 @@ class FromJSONTestCase(NumpyTestCase):
         self.assertndArrayEqual(
             test_series.int_field,
             np.array(5*[1, 2])
+        )
+        self.assertndArrayEqual(
+            test_series.alternate_db_name,
+            np.array(5*[2, 3])
         )
         self.assertndArrayEqual(
             test_series.float_field,
