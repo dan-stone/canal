@@ -251,7 +251,7 @@ class Measurement(metaclass=MeasurementMeta):
 
             fields.append(field)
             fields_prototype.append("{field_name}=%s".format(
-                field_name=attname
+                field_name=field.db_name
             ))
 
         # Generate the line protocol string from the above prototypes

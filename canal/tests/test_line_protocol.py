@@ -1,3 +1,4 @@
+import collections
 import copy
 import datetime
 import re
@@ -119,36 +120,44 @@ class LineProtocolMixin(object):
         return fields
 
 
+_Datum = collections.namedtuple('_Datum', ["name", "db_name", "data"])
+
+
 class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
     class TestMeasurement(canal.Measurement):
         int_field = canal.IntegerField()
         float_field = canal.FloatField()
         bool_field = canal.BooleanField()
         string_field = canal.StringField()
+        db_name_field = canal.StringField(db_name="foo")
         first_tag = canal.Tag()
         second_tag = canal.Tag()
+        db_name_tag = canal.Tag(db_name="bar")
 
     NUM_SAMPLES = 10
     TIME = [
         datetime.datetime.now(pytz.UTC) + datetime.timedelta(seconds=x)
         for x in range(NUM_SAMPLES)
     ]
-    FIELDS = dict(
-        int_field=1*np.ones(NUM_SAMPLES, dtype=np.int64),
-        float_field=2.5*np.ones(NUM_SAMPLES, dtype=np.float64),
-        bool_field=np.array(NUM_SAMPLES*[True], dtype=np.bool),
-        string_field=np.array(NUM_SAMPLES*["test string"])
-    )
-    TAGS = dict(
-        first_tag="not an array!!",
-        second_tag="tags describe all points in a Series"
-    )
+
+    FIELDS = [
+        _Datum("int_field", "int_field", np.ones(NUM_SAMPLES, dtype=np.int64)),
+        _Datum("float_field", "float_field", 2.5 * np.ones(NUM_SAMPLES, dtype=np.float64)),
+        _Datum("bool_field", "bool_field", np.array(NUM_SAMPLES * [True], dtype=np.bool)),
+        _Datum("string_field", "string_field", np.array(NUM_SAMPLES * ["test string"])),
+        _Datum("db_name_field", "foo", np.array(NUM_SAMPLES * ["alternate_db_name"]))
+    ]
+    TAGS = [
+        _Datum("first_tag", "first_tag", "not an array!!"),
+        _Datum("second_tag", "second_tag", "tags describe all points in a Series"),
+        _Datum("db_name_tag", "bar", "db_name test"),
+    ]
 
     def test_simple_case(self):
         test_series = self.TestMeasurement(
             time=self.TIME,
-            **self.FIELDS,
-            **self.TAGS
+            **{field.name: field.data for field in self.FIELDS},
+            **{tag.name: tag.data for tag in self.TAGS}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -157,21 +166,23 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], self.TAGS)
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in self.TAGS
+            })
             self.assertEqual(components["fields"], {
-                key: value[i] for key, value in self.FIELDS.items()
+                field.db_name: field.data[i] for field in self.FIELDS
             })
             self.assertEqual(components["timestamp"], self.TIME[i])
 
     def test_null_column(self):
         missing_field = "int_field"
         fields = copy.deepcopy(self.FIELDS)
-        del(fields[missing_field])
+        fields.pop(0)
 
         test_series = self.TestMeasurement(
             time=self.TIME,
-            **fields,
-            **self.TAGS
+            **{field.name: field.data for field in fields},
+            **{tag.name: tag.data for tag in self.TAGS}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -180,21 +191,26 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], self.TAGS)
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in self.TAGS
+            })
             self.assertEqual(components["fields"], {
-                key: value[i] for key, value in fields.items()
+                field.db_name: field.data[i] for field in fields
             })
             self.assertEqual(components["timestamp"], self.TIME[i])
             self.assertNotIn(missing_field, components["fields"])
 
     def test_nan_column(self):
         fields = copy.deepcopy(self.FIELDS)
-        fields["float_field"] = np.nan*np.ones(self.NUM_SAMPLES)
+        fields[1] = _Datum(
+            "float_field",
+            "float_field", np.nan*np.ones(self.NUM_SAMPLES)
+        )
 
         test_series = self.TestMeasurement(
             time=self.TIME,
-            **fields,
-            **self.TAGS
+            **{field.name: field.data for field in fields},
+            **{tag.name: tag.data for tag in self.TAGS}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -203,20 +219,27 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], self.TAGS)
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in self.TAGS
+            })
             np.testing.assert_equal(components["fields"], {
-                key: value[i] for key, value in fields.items()
+                field.db_name: field.data[i] for field in fields
             })
             self.assertEqual(components["timestamp"], self.TIME[i])
 
     def test_nan_within_valid_float_column(self):
         fields = copy.deepcopy(self.FIELDS)
-        fields["float_field"][0::2] = np.nan
+        temp_data = fields[1].data
+        temp_data[0::2] = np.nan
+        fields[1] = _Datum(
+            "float_field",
+            "float_field", temp_data
+        )
 
         test_series = self.TestMeasurement(
             time=self.TIME,
-            **fields,
-            **self.TAGS
+            **{field.name: field.data for field in fields},
+            **{tag.name: tag.data for tag in self.TAGS}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -225,17 +248,19 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], self.TAGS)
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in self.TAGS
+            })
             np.testing.assert_equal(components["fields"], {
-                key: value[i] for key, value in fields.items()
+                field.db_name: field.data[i] for field in fields
             })
             self.assertEqual(components["timestamp"], self.TIME[i])
 
     def test_null_timestamp(self):
         test_series = self.TestMeasurement(
             time=None,
-            **self.FIELDS,
-            **self.TAGS
+            **{field.name: field.data for field in self.FIELDS},
+            **{tag.name: tag.data for tag in self.TAGS}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -244,20 +269,22 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], self.TAGS)
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in self.TAGS
+            })
             self.assertEqual(components["fields"], {
-                key: value[i] for key, value in self.FIELDS.items()
+                field.db_name: field.data[i] for field in self.FIELDS
             })
             self.assertIsNone(components["timestamp"])
 
     def test_comma_in_tag_string(self):
         tags = copy.deepcopy(self.TAGS)
-        tags["first_tag"] = "tag,with commas,,,!!,  "
+        tags[0] = _Datum("first_tag", "first_tag", "tag,with commas,,,!!,  ")
 
         test_series = self.TestMeasurement(
             time=self.TIME,
-            **self.FIELDS,
-            **tags
+            **{field.name: field.data for field in self.FIELDS},
+            **{tag.name: tag.data for tag in tags}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -266,20 +293,22 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], tags)
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in tags
+            })
             self.assertEqual(components["fields"], {
-                key: value[i] for key, value in self.FIELDS.items()
+                field.db_name: field.data[i] for field in self.FIELDS
             })
             self.assertEqual(components["timestamp"], self.TIME[i])
 
     def test_equal_sign_in_tag_string(self):
         tags = copy.deepcopy(self.TAGS)
-        tags["second_tag"] = "tag=with=equals signs!!==  ="
+        tags[1] = _Datum("second_tag", "second_tag", "tag=with=equals signs!!==  =")
 
         test_series = self.TestMeasurement(
             time=self.TIME,
-            **self.FIELDS,
-            **tags
+            **{field.name: field.data for field in self.FIELDS},
+            **{tag.name: tag.data for tag in tags}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -288,21 +317,23 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], tags)
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in tags
+            })
             self.assertEqual(components["fields"], {
-                key: value[i] for key, value in self.FIELDS.items()
+                field.db_name: field.data[i] for field in self.FIELDS
             })
             self.assertEqual(components["timestamp"], self.TIME[i])
 
     def test_missing_tag(self):
         missing_tag = "second_tag"
         tags = copy.deepcopy(self.TAGS)
-        del(tags[missing_tag])
+        tags.pop(1)
 
         test_series = self.TestMeasurement(
             time=self.TIME,
-            **self.FIELDS,
-            **tags
+            **{field.name: field.data for field in self.FIELDS},
+            **{tag.name: tag.data for tag in tags}
         )
 
         line_protocol = test_series.to_line_protocol()
@@ -311,9 +342,11 @@ class LineProtocolTestCase(NumpyTestCase, LineProtocolMixin):
             components = self.parse_line_protocol(line)
 
             self.assertEqual(components["measurement"], self.TestMeasurement.__name__)
-            self.assertEqual(components["tags"], tags)
-            self.assertNotIn(missing_tag, components["tags"])
-            self.assertEqual(components["fields"], {
-                key: value[i] for key, value in self.FIELDS.items()
+            self.assertEqual(components["tags"], {
+                tag.db_name: tag.data for tag in tags
             })
+            self.assertEqual(components["fields"], {
+                field.db_name: field.data[i] for field in self.FIELDS
+            })
+            self.assertNotIn(missing_tag, components["tags"])
             self.assertEqual(components["timestamp"], self.TIME[i])
