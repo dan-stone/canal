@@ -66,12 +66,13 @@ class MakeQueryStringTestCase(unittest.TestCase):
         float_field = canal.FloatField()
         bool_field = canal.BooleanField()
         string_field = canal.StringField()
+        alternate_db_name = canal.StringField(db_name="alternate")
         test_tag = canal.Tag()
 
     def test_make_query_string(self):
         self.assertEqual(
             self.Fixture.make_query_string(),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture"
         )
 
     def test_less_than(self):
@@ -79,7 +80,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 time__lt=TEST_DATE
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE time < '2016-05-17T15:49:23.012345Z'"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE time < '2016-05-17T15:49:23.012345Z'"
         )
 
     def test_less_than_or_equal(self):
@@ -87,7 +88,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 float_field__lte=2.5
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE float_field <= 2.5"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE float_field <= 2.5"
         )
 
     def test_equal_explicit(self):
@@ -95,7 +96,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 test_tag__eq="hello"
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE test_tag = 'hello'"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE test_tag = 'hello'"
         )
 
     def test_equal_implied(self):
@@ -103,7 +104,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 bool_field=True
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE bool_field = True"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE bool_field = True"
         )
 
     def test_not_equal(self):
@@ -111,7 +112,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 test_tag__neq="hello"
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE test_tag <> 'hello'"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE test_tag <> 'hello'"
         )
 
     def test_greater_than_or_equal(self):
@@ -119,7 +120,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 int_field__gte=3
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE int_field >= 3"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE int_field >= 3"
         )
 
     def test_greater_than(self):
@@ -127,7 +128,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 int_field__gt=5
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE int_field > 5"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture WHERE int_field > 5"
         )
 
     def test_limit(self):
@@ -135,7 +136,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
             self.Fixture.make_query_string(
                 limit=5
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 5"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 5"
         )
 
     def test_limit_offset(self):
@@ -144,7 +145,7 @@ class MakeQueryStringTestCase(unittest.TestCase):
                 limit=10,
                 offset=20
             ),
-            "SELECT bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 10 OFFSET 20"
+            "SELECT alternate,bool_field,float_field,int_field,string_field,test_tag FROM Fixture LIMIT 10 OFFSET 20"
         )
 
     def test_unrecognized_condition(self):

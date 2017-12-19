@@ -336,7 +336,7 @@ class Measurement(metaclass=MeasurementMeta):
             measurement_name = cls.__name__
 
         query_string = "SELECT {parameters} FROM {measurement_name}".format(
-            parameters=",".join(name for name in cls.tags_and_fields),
+            parameters=",".join(datum.db_name for datum in cls.tags_and_fields.values()),
             measurement_name=measurement_name
         )
 
